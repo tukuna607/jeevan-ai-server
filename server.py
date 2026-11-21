@@ -132,6 +132,20 @@ async def send_to_room(code, message):
             room["clients"].remove(client)
 
 
+async def send_to_other_client(code, sender, message):
+    room = rooms.get(code)
+
+    if room is None:
+        return
+
+    for client in list(room["clients"]):
+        if client != sender:
+            try:
+                await client.send_json(message)
+            except Exception:
+                pass
+
+
 @app.websocket("/ws/{code}")
 async def websocket_room(websocket: WebSocket, code: str):
 
@@ -199,7 +213,11 @@ async def websocket_room(websocket: WebSocket, code: str):
                     })
                     continue
 
-                if source not in ("hi", "te") or target not in ("hi", "te") or source == target:
+                if (
+                    source not in ("hi", "te")
+                    or target not in ("hi", "te")
+                    or source == target
+                ):
                     await websocket.send_json({
                         "type": "error",
                         "message": "Unsupported language direction"
@@ -211,7 +229,7 @@ async def websocket_room(websocket: WebSocket, code: str):
                         text, source, target
                     )
 
-                    await send_to_room(code, {
+                    await send_to_other_client(code, websocket, {
                         "type": "translation",
                         "original": text,
                         "translated": translated,
@@ -264,4 +282,5 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=8000
         )
+    
   
